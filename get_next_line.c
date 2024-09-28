@@ -3,88 +3,129 @@
 /*                                                        :::      ::::::::   */
 /*   get_next_line.c                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ikondrat <ikondrat@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aloiki <aloiki@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/09/24 13:31:58 by ikondrat          #+#    #+#             */
-/*   Updated: 2024/09/25 19:34:39 by ikondrat         ###   ########.fr       */
+/*   Created: 2024/09/24 12:04:35 by juanherr          #+#    #+#             */
+/*   Updated: 2024/09/28 00:22:17 by aloiki           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
-#include <stdio.h>
 
-static char	*ft_strndup(const char *s, size_t n)
+static char	*ft_free(char **str)
 {
-	size_t	i;
-	char	*dup;
+	if (*str)
+	{
+		free(*str);
+		*str = NULL;
+	}
+	return (NULL);
+}
+
+static char	*final_line(char *out)
+{
+	if (ft_strlen(out) == 0)
+	{
+		free(out);
+		return (NULL);
+	}
+	else
+		return (out);
+}
+
+static char	*output(char **line)
+{
+	char	*left;
+	char	*out;
+	int		i;
 
 	i = 0;
-	dup = (char *)malloc(n * sizeof(char) + 1);
-	if (!dup)
+	if (*line == NULL)
 		return (NULL);
-	while (s[i] && i < n)
-	{
-		dup[i] = s[i];
+	while ((*line)[i] != '\n' && (*line)[i])
 		i++;
+	if ((*line)[i] == '\n')
+	{
+		out = ft_substr(*line, 0, i + 1);
+		left = ft_strdup(*line + (i + 1));
+		if (!out || !left)
+			return (ft_free(line));
+		free(*line);
+		*line = left;
+		return (out);
 	}
-	dup[i] = '\0';
-	return (dup);
+	out = ft_strdup(*line);
+	free(*line);
+	*line = NULL;
+	return (final_line(out));
+}
+
+static char	*find_newline(int to_read, int fd, char *buffer, char **line)
+{
+	char	*aux;
+
+	while (to_read > 0)
+	{
+		buffer[to_read] = '\0';
+		if (*line == NULL)
+			*line = ft_strdup("");
+		aux = ft_strjoin(*line, buffer);
+		free(*line);
+		*line = aux;
+		if (ft_strchr(buffer, '\n'))
+			break ;
+		to_read = read(fd, buffer, BUFFER_SIZE);
+	}
+	free(buffer);
+	return (output(line));
 }
 
 char	*get_next_line(int fd)
 {
-	char				*out;
-	char				*buffer;
-	static char			*resto;
-	size_t				to_read;
-	size_t				i;
-	
-	if (fd < 0)	
+	char		*buffer;
+	static char	*line;
+	int			to_read;
+
+	if (fd < 0 || BUFFER_SIZE <= 0)
 		return (NULL);
-	buffer = (char *)malloc(sizeof(char) * BUFFER_SIZE + 1);
+	buffer = (char *)malloc(BUFFER_SIZE + 1);
 	if (!buffer)
 		return (NULL);
-	if (!resto)
-		to_read = read(fd, buffer, BUFFER_SIZE);
-	while (to_read > 0)
+	to_read = read(fd, buffer, BUFFER_SIZE);
+	if (to_read < 0)
 	{
-		i = 0;
-		if (!resto)
-		{
-			while (buffer[i] != '\n')
-				i++;
-			out = ft_strndup(buffer, i);
-			resto = ft_substr(buffer, i + 1, ft_strlen(buffer) - ft_strlen(out));
-			printf("entrando en la primera linea");
-			return (out);
-		}
-		else
-		{
-			printf("entra en el else");
-			i++;
-			while (resto[i] != '\n')
-				i++;
-			out = ft_strjoin(out, resto);
-			resto = ft_substr(resto, i + 1, ft_strlen(resto) - ft_strlen(out));
-			out = ft_strndup(resto, i);
-			return(out);
-		}
-		i++;
+		free(buffer);
+		free(line);
+		line = NULL;
+		return (NULL);
 	}
-	printf("no entra en el bucle");
-	return (NULL);
+	return (find_newline(to_read, fd, buffer, &line));
 }
-int	main(void)
-{
-	int		fd;
-	size_t	i;
 
-	i = 0;
-	fd = open("hola.txt", O_RDONLY);
-	while (i < 5)
-	{
-		printf("%s\n", get_next_line(fd));
-		i++;
-	}
-	 close(fd);
-}
+// int	main(void)
+// {
+// 	int	fd;
+// 	char *line;
+// 	size_t	i = 0;
+	
+// 	fd = open("hello.txt", O_RDONLY);
+// 	line = get_next_line(fd);
+	
+// 	//ft_putstr_fd(line, 1);
+	
+// 	//while (i < 3)
+// 	//{
+// 	//	printf("%s", line);
+// 	//	i++;
+// 	//	line = get_next_line(fd);
+// 	//}
+	
+// 	while (line)
+// 	{
+// 		printf("%s", line);
+// 		free (line);
+// 		line = get_next_line(fd);
+// 	}
+// 	close(fd);
+// 	return (0);
+// }
