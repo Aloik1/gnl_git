@@ -3,53 +3,56 @@
 /*                                                        :::      ::::::::   */
 /*   get_next_line.c                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aloiki <aloiki@student.42.fr>              +#+  +:+       +#+        */
+/*   By: ikondrat <ikondrat@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/09/24 12:04:35 by juanherr          #+#    #+#             */
-/*   Updated: 2024/09/28 00:22:17 by aloiki           ###   ########.fr       */
+/*   Created: 2024/09/28 17:08:35 by ikondrat          #+#    #+#             */
+/*   Updated: 2024/09/30 18:40:25 by ikondrat         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 
-static char	*ft_free(char **str)
+char	*ft_free(char *str)
 {
-	if (*str)
+	if (str)
 	{
-		free(*str);
-		*str = NULL;
+		free (str);
+		str = NULL;
 	}
 	return (NULL);
 }
 
-static char	*final_line(char *out)
+char	*check_last_line(char *out)
 {
+	if (!out)
+		return (NULL);
 	if (ft_strlen(out) == 0)
 	{
 		free(out);
 		return (NULL);
 	}
-	else
-		return (out);
+	return (out);
 }
 
-static char	*output(char **line)
+char	*small_line(char **line)
 {
+	size_t	i;
 	char	*left;
 	char	*out;
-	int		i;
 
-	i = 0;
-	if (*line == NULL)
+	if (!(*line))
 		return (NULL);
-	while ((*line)[i] != '\n' && (*line)[i])
+	i = 0;
+	while ((*line)[i] && (*line)[i] != '\n')
 		i++;
 	if ((*line)[i] == '\n')
 	{
 		out = ft_substr(*line, 0, i + 1);
-		left = ft_strdup(*line + (i + 1));
-		if (!out || !left)
-			return (ft_free(line));
+		if (!out)
+			return (ft_free(*line));
+		left = ft_strdup(*line + i + 1);
+		if (!left)
+			return (ft_free(*line));
 		free(*line);
 		*line = left;
 		return (out);
@@ -57,34 +60,36 @@ static char	*output(char **line)
 	out = ft_strdup(*line);
 	free(*line);
 	*line = NULL;
-	return (final_line(out));
+	return (check_last_line(out));
 }
 
-static char	*find_newline(int to_read, int fd, char *buffer, char **line)
+char	*big_line(int fd, char *buffer, char **line, ssize_t to_read)
 {
-	char	*aux;
+	char		*aux;
 
 	while (to_read > 0)
 	{
 		buffer[to_read] = '\0';
-		if (*line == NULL)
+		if (!*line)
 			*line = ft_strdup("");
+		if (!*line)
+			return (ft_free(*line));
 		aux = ft_strjoin(*line, buffer);
-		free(*line);
+		free (*line);
 		*line = aux;
-		if (ft_strchr(buffer, '\n'))
+		if (ft_strchr(*line, '\n'))
 			break ;
 		to_read = read(fd, buffer, BUFFER_SIZE);
 	}
-	free(buffer);
-	return (output(line));
+	ft_free(buffer);
+	return (small_line(line));
 }
 
 char	*get_next_line(int fd)
 {
-	char		*buffer;
-	static char	*line;
-	int			to_read;
+	char			*buffer;
+	ssize_t			to_read;
+	static char		*line;
 
 	if (fd < 0 || BUFFER_SIZE <= 0)
 		return (NULL);
@@ -92,40 +97,13 @@ char	*get_next_line(int fd)
 	if (!buffer)
 		return (NULL);
 	to_read = read(fd, buffer, BUFFER_SIZE);
-	if (to_read < 0)
+	if (to_read == -1)
 	{
-		free(buffer);
-		free(line);
+		ft_free(buffer);
+		ft_free(line);
 		line = NULL;
 		return (NULL);
 	}
-	return (find_newline(to_read, fd, buffer, &line));
+	buffer[to_read] = '\0';
+	return (big_line(fd, buffer, &line, to_read));
 }
-
-// int	main(void)
-// {
-// 	int	fd;
-// 	char *line;
-// 	size_t	i = 0;
-	
-// 	fd = open("hello.txt", O_RDONLY);
-// 	line = get_next_line(fd);
-	
-// 	//ft_putstr_fd(line, 1);
-	
-// 	//while (i < 3)
-// 	//{
-// 	//	printf("%s", line);
-// 	//	i++;
-// 	//	line = get_next_line(fd);
-// 	//}
-	
-// 	while (line)
-// 	{
-// 		printf("%s", line);
-// 		free (line);
-// 		line = get_next_line(fd);
-// 	}
-// 	close(fd);
-// 	return (0);
-// }
